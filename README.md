@@ -2,7 +2,7 @@
 
 > A code review robot powered by ChatGPT
 
-Translation Versions: [ENGLISH](./README.md) | [中文简体](./README.zh-CN.md) | [中文繁體](./README.zh-TW.md) | [한국어](./README.ko.md) | [日本語](./README.ja.md)
+Translation Versions: [ENGLISH](./README.md) | [简体中文](./README.zh-CN.md) | [繁體中文](./README.zh-TW.md) | [한국어](./README.ko.md) | [日本語](./README.ja.md)
 
 ## Bot Usage
 
@@ -61,10 +61,12 @@ jobs:
           # Optional
           LANGUAGE: Chinese
           OPENAI_API_ENDPOINT: https://api.openai.com/v1
-          MODEL:
-          PROMPT:
-          top_p: 1
-          temperature: 1
+          MODEL: gpt-3.5-turbo # https://platform.openai.com/docs/models
+          PROMPT: # example: Please check if there are any confusions or irregularities in the following code diff:
+          top_p: 1 # https://platform.openai.com/docs/api-reference/chat/create#chat/create-top_p
+          temperature: 1 # https://platform.openai.com/docs/api-reference/chat/create#chat/create-temperature
+          max_tokens: 10000
+          MAX_PATCH_LENGTH: 10000 # if the patch/diff length is large than MAX_PATCH_LENGTH, will be ignored and won't review. By default, with no MAX_PATCH_LENGTH set, there is also no limit for the patch/diff length.
 ```
 
 ## Self-hosting
@@ -75,7 +77,7 @@ jobs:
 
 ```sh
 npm i
-npm -i g pm2
+npm i -g pm2
 npm run build
 pm2 start pm2.config.cjs
 ```
@@ -90,8 +92,11 @@ pm2 start pm2.config.cjs
 # Install dependencies
 npm install
 
+# Build code
+npm run build
+
 # Run the bot
-npm start
+npm run start
 ```
 
 ### Docker

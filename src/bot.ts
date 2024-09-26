@@ -3,7 +3,9 @@ import { Context, Probot } from 'probot';
 import { Chat } from './chat.js';
 
 const OPENAI_API_KEY = 'OPENAI_API_KEY';
-const MAX_PATCH_COUNT = 4000;
+const MAX_PATCH_COUNT = process.env.MAX_PATCH_LENGTH
+  ? +process.env.MAX_PATCH_LENGTH
+  : Infinity;
 
 export const robot = (app: Probot) => {
   const loadChat = async (context: Context) => {
@@ -46,7 +48,7 @@ export const robot = (app: Probot) => {
       const chat = await loadChat(context);
 
       if (!chat) {
-        console.log('Chat initialized fialed');
+        console.log('Chat initialized failed');
         return 'no chat';
       }
 
@@ -54,11 +56,10 @@ export const robot = (app: Probot) => {
 
       if (
         pull_request.state === 'closed' ||
-        pull_request.locked ||
-        pull_request.draft
+        pull_request.locked
       ) {
-        console.log('invalid event paylod');
-        return 'invalid event paylod';
+        console.log('invalid event payload');
+        return 'invalid event payload';
       }
 
       const target_label = process.env.TARGET_LABEL;
@@ -90,16 +91,20 @@ export const robot = (app: Probot) => {
           head: commits[commits.length - 1].sha,
         });
 
-        const ignoreList = (process.env.IGNORE || process.env.ignore || '').split('\n').filter(v => v !== '');
+        const ignoreList = (process.env.IGNORE || process.env.ignore || '')
+          .split('\n')
+          .filter((v) => v !== '');
 
         const filesNames = files?.map((file) => file.filename) || [];
-        changedFiles = changedFiles?.filter((file) =>
-          filesNames.includes(file.filename) && !ignoreList.includes(file.filename)
+        changedFiles = changedFiles?.filter(
+          (file) =>
+            filesNames.includes(file.filename) &&
+            !ignoreList.includes(file.filename)
         );
       }
 
       if (!changedFiles?.length) {
-        console.log('no target label attached');
+        console.log('no change found');
         return 'no change';
       }
 
@@ -119,18 +124,22 @@ export const robot = (app: Probot) => {
           );
           continue;
         }
-        const res = await chat?.codeReview(patch);
+        try {
+          const res = await chat?.codeReview(patch);
 
-        if (!!res) {
-          await context.octokit.pulls.createReviewComment({
-            repo: repo.repo,
-            owner: repo.owner,
-            pull_number: context.pullRequest().pull_number,
-            commit_id: commits[commits.length - 1].sha,
-            path: file.filename,
-            body: res,
-            position: patch.split('\n').length - 1,
-          });
+          if (!!res) {
+            await context.octokit.pulls.createReviewComment({
+              repo: repo.repo,
+              owner: repo.owner,
+              pull_number: context.pullRequest().pull_number,
+              commit_id: commits[commits.length - 1].sha,
+              path: file.filename,
+              body: res,
+              position: patch.split('\n').length - 1,
+            });
+          }
+        } catch (e) {
+          console.error(`review ${file.filename} failed`, e);
         }
       }
 
